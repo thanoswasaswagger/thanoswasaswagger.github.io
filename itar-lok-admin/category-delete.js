@@ -1,87 +1,26 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.4';
-
-const URL='https://dmmjlsrdohdzwcyfnlgt.supabase.co';
-const KEY='sb_publishable_Nb1BJiz1m9W-qLtiOrJpsw_s6PsrBXi';
-const supabase=createClient(URL,KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storageKey:'itar-lok-admin-auth'}});
-
-const select=document.getElementById('pCategory');
-const control=select?.closest('.categoryControl');
-if(select&&control){
-  const btn=document.createElement('button');
-  btn.type='button';
-  btn.id='deleteSelectedCategory';
-  btn.className='btn danger hidden';
-  btn.textContent='Delete selected category';
-  btn.style.gridColumn='1 / -1';
-  control.appendChild(btn);
-
-  const sync=()=>btn.classList.toggle('hidden',!select.value);
-  select.addEventListener('change',sync);
-  sync();
-
-  btn.addEventListener('click',async()=>{
-    const categoryId=select.value;
-    if(!categoryId)return;
-    const option=select.options[select.selectedIndex];
-    const categoryName=option?.textContent?.trim()||'this category';
-
-    btn.disabled=true;
-    const oldText=btn.textContent;
-    btn.textContent='Checking…';
-
-    const {count,error:countError}=await supabase
-      .from('products')
-      .select('id',{count:'exact',head:true})
-      .eq('category_id',categoryId);
-
-    if(countError){
-      alert(`Could not check this category: ${countError.message}`);
-      btn.disabled=false;
-      btn.textContent=oldText;
-      return;
-    }
-
-    if((count||0)>0){
-      alert(`${categoryName} still contains ${count} product${count===1?'':'s'}. Move or delete those products first, then delete the category.`);
-      btn.disabled=false;
-      btn.textContent=oldText;
-      return;
-    }
-
-    if(!confirm(`Delete the category “${categoryName}” permanently?`)){
-      btn.disabled=false;
-      btn.textContent=oldText;
-      return;
-    }
-
-    const {data:category,error:readError}=await supabase
-      .from('categories')
-      .select('image_path')
-      .eq('id',categoryId)
-      .single();
-
-    if(readError){
-      alert(`Could not read this category: ${readError.message}`);
-      btn.disabled=false;
-      btn.textContent=oldText;
-      return;
-    }
-
-    btn.textContent='Deleting…';
-    const {error:deleteError}=await supabase.from('categories').delete().eq('id',categoryId);
-    if(deleteError){
-      alert(`Category was not deleted: ${deleteError.message}`);
-      btn.disabled=false;
-      btn.textContent=oldText;
-      return;
-    }
-
-    const imagePath=category?.image_path||'';
-    if(imagePath&&!/^https?:\/\//i.test(imagePath)){
-      await supabase.storage.from('product-images').remove([imagePath]);
-    }
-
-    alert(`${categoryName} was deleted.`);
-    location.reload();
-  });
-}
+const U='https://dmmjlsrdohdzwcyfnlgt.supabase.co',K='sb_publishable_Nb1BJiz1m9W-qLtiOrJpsw_s6PsrBXi';
+const s=createClient(U,K,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storageKey:'itar-lok-admin-auth'}}),$=id=>document.getElementById(id);
+let cats=[],tpls=[];
+const esc=x=>String(x??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])),vals=x=>[...new Set(String(x||'').split(/[\n,]+/).map(v=>v.trim()).filter(Boolean))],slug=x=>String(x).toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,90)||`item-${Date.now()}`;
+const pub=p=>!p?'':/^https?:\/\//i.test(p)?p:s.storage.from('product-images').getPublicUrl(p).data.publicUrl;
+async function refresh(){const a=await s.from('categories').select('*').order('sort_order'),b=await s.from('option_templates').select('*').order('sort_order');cats=a.data||[];tpls=b.data||[]}
+const modal=document.createElement('div');modal.className='modal';modal.id='flexTemplateModal';modal.style.zIndex='50';modal.innerHTML=`<div class="card modalbox" style="width:min(760px,100%)"><div class="modalhead"><div><h2 style="margin:0">Option templates</h2><div class="muted">Create any reusable type: size, weight, volume, pack, color or something new.</div></div><button type="button" class="btn secondary" id="flexTplClose">Close</button></div><div id="flexTplList" class="grid" style="margin-bottom:16px"></div><form id="flexTplForm" class="grid"><input type="hidden" id="flexTplId"><div class="g2 grid"><div class="field"><label>Template name</label><input id="flexTplName" required placeholder="Bottle sizes"></div><div class="field"><label>Option label</label><input id="flexTplLabel" required placeholder="Volume"></div></div><div class="field"><label>Options</label><textarea id="flexTplValues" required placeholder="100ml, 250ml, 500ml, 1L"></textarea></div><div class="row"><button class="btn primary" type="submit">Save template</button><button class="btn secondary hidden" type="button" id="flexTplCancel">Cancel edit</button></div><div id="flexTplMsg"></div></form></div>`;document.body.appendChild(modal);
+const style=document.createElement('style');style.textContent=`.flexChecks{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.flexCheck{display:flex;gap:6px;align-items:center;border:1px solid var(--line);border-radius:999px;padding:8px 11px;background:#fff;font-size:12px;font-weight:800}.flexTools{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.flexCard{border:1px solid var(--line);border-radius:16px;padding:12px;background:#fff;display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.flexCategoryFields{border:1px solid #fed7aa;border-radius:16px;padding:12px;background:#fffaf5;margin-top:10px}`;document.head.appendChild(style);
+function m(el,type,text){el.innerHTML=text?`<div class="notice ${type}">${esc(text)}</div>`:''}
+async function openTemplates(){await refresh();renderTemplates();$('flexTplForm').reset();$('flexTplId').value='';$('flexTplCancel').classList.add('hidden');m($('flexTplMsg'),'','');modal.classList.add('open')}
+$('flexTplClose').onclick=()=>modal.classList.remove('open');$('flexTplCancel').onclick=()=>{$('flexTplForm').reset();$('flexTplId').value='';$('flexTplCancel').classList.add('hidden')};
+function renderTemplates(){$('flexTplList').innerHTML=tpls.map(t=>`<div class="flexCard"><div><b>${esc(t.name)}</b><div class="muted" style="font-size:12px">${esc(t.option_label)} • ${(t.option_values||[]).map(esc).join(', ')}</div></div><div class="row"><button class="btn secondary" type="button" data-te="${t.id}" style="padding:7px 10px">Edit</button><button class="btn danger" type="button" data-td="${t.id}" style="padding:7px 10px">Delete</button></div></div>`).join('')||'<div class="muted">No templates yet.</div>';document.querySelectorAll('[data-te]').forEach(b=>b.onclick=()=>{const t=tpls.find(x=>x.id===b.dataset.te);$('flexTplId').value=t.id;$('flexTplName').value=t.name;$('flexTplLabel').value=t.option_label;$('flexTplValues').value=(t.option_values||[]).join('\n');$('flexTplCancel').classList.remove('hidden')});document.querySelectorAll('[data-td]').forEach(b=>b.onclick=async()=>{const t=tpls.find(x=>x.id===b.dataset.td);if(!confirm(`Delete template “${t.name}”? Existing categories keep their current options.`))return;const {error}=await s.from('option_templates').delete().eq('id',t.id);if(error)return m($('flexTplMsg'),'error',error.message);await refresh();renderTemplates();enhanceCategoryForm()})}
+$('flexTplForm').onsubmit=async e=>{e.preventDefault();const id=$('flexTplId').value,name=$('flexTplName').value.trim(),option_label=$('flexTplLabel').value.trim(),option_values=vals($('flexTplValues').value);if(!name||!option_label||!option_values.length)return m($('flexTplMsg'),'error','Name, label and at least one option are required.');const payload={name,option_label,option_values,updated_at:new Date().toISOString(),sort_order:id?(tpls.find(x=>x.id===id)?.sort_order||0):(Math.max(0,...tpls.map(x=>Number(x.sort_order||0)))+10)};const q=id?s.from('option_templates').update(payload).eq('id',id):s.from('option_templates').insert(payload),{error}=await q;if(error)return m($('flexTplMsg'),'error',error.message);$('flexTplForm').reset();$('flexTplId').value='';$('flexTplCancel').classList.add('hidden');await refresh();renderTemplates();enhanceCategoryForm();m($('flexTplMsg'),'good','Template saved. Existing categories stay independent.')};
+function rowFor(v){return [...document.querySelectorAll('.variantRow')].find(r=>r.querySelector('.vOption')?.value.trim()===v)}
+function addRow(v){if(rowFor(v))return;const r=document.createElement('div');r.className='variantRow';r.innerHTML=`<div><label class="muted" style="font-size:10px;font-weight:800">Option</label><input class="vOption" value="${esc(v)}"></div><div><label class="muted" style="font-size:10px;font-weight:800">Price ₹</label><input class="vPrice" type="number" min="0" step="0.01" value="${Number($('pPrice')?.value||0)}"></div><div><label class="muted" style="font-size:10px;font-weight:800">MRP ₹</label><input class="vMrp" type="number" min="0" step="0.01" value="${Number($('pCompare')?.value||0)||''}"></div><div><label class="muted" style="font-size:10px;font-weight:800">Stock</label><input class="vStock" type="number" min="0" step="1" value="0"></div><div><label class="muted" style="font-size:10px;font-weight:800">SKU</label><input class="vSku"></div><button type="button" class="btn danger kill">×</button>`;r.querySelector('.kill').onclick=()=>{r.remove();const c=[...document.querySelectorAll('.flexVarCheck')].find(x=>x.value===v);if(c)c.checked=false};$('variantRows').appendChild(r)}
+async function syncVariantUI(){await refresh();const id=$('pCategory')?.value,c=cats.find(x=>x.id===id),sec=$('variantSection');document.getElementById('flexVariantTools')?.remove();if(!c||c.listing_type==='normal'||!sec||sec.classList.contains('hidden'))return;const existing=[...document.querySelectorAll('.variantRow .vOption')].map(i=>i.value.trim()).filter(Boolean),isNew=!$('productId')?.value;if(isNew){document.querySelectorAll('.variantRow').forEach(r=>r.remove())}const selected=isNew?[]:existing,all=[...new Set([...(Array.isArray(c.option_values)?c.option_values.map(String):[]),...selected])];const box=document.createElement('div');box.id='flexVariantTools';box.innerHTML=`<div class="muted" style="font-size:12px;margin:8px 0">Choose every ${esc(c.option_label||'option')} available for this product. Update stock separately for each checked option.</div><div class="flexChecks">${all.map(v=>`<label class="flexCheck"><input class="flexVarCheck" type="checkbox" value="${esc(v)}" ${selected.includes(v)?'checked':''}> ${esc(v)}</label>`).join('')}</div><div class="flexTools"><input id="flexNewVar" placeholder="Add custom option, e.g. 3XL or 2kg" style="flex:1;min-width:210px;border:1px solid var(--line);border-radius:12px;padding:10px"><button type="button" id="flexAddVar" class="btn secondary">+ Option</button><input id="flexBulkStock" type="number" min="0" step="1" placeholder="Bulk stock" style="width:120px;border:1px solid var(--line);border-radius:12px;padding:10px"><button type="button" id="flexApplyStock" class="btn secondary">Apply to checked</button><button type="button" id="flexEditCat" class="btn blue">Edit category options</button><button type="button" id="flexManageTpl" class="btn blue">Templates</button></div>`;sec.insertBefore(box,$('variantRows'));box.querySelectorAll('.flexVarCheck').forEach(ch=>ch.onchange=()=>{if(ch.checked)addRow(ch.value);else rowFor(ch.value)?.remove()});$('flexAddVar').onclick=()=>{const v=$('flexNewVar').value.trim();if(!v)return;if(![...document.querySelectorAll('.flexVarCheck')].some(x=>x.value.toLowerCase()===v.toLowerCase())){$('.flexChecks')?.insertAdjacentHTML('beforeend',`<label class="flexCheck"><input class="flexVarCheck" type="checkbox" value="${esc(v)}" checked> ${esc(v)}</label>`);const ch=[...document.querySelectorAll('.flexVarCheck')].at(-1);ch.onchange=()=>{if(ch.checked)addRow(ch.value);else rowFor(ch.value)?.remove()};addRow(v)}$('flexNewVar').value=''};$('flexApplyStock').onclick=()=>{const n=Number($('flexBulkStock').value);if(!Number.isFinite(n)||n<0)return;document.querySelectorAll('.flexVarCheck:checked').forEach(ch=>{const r=rowFor(ch.value);if(r)r.querySelector('.vStock').value=String(Math.floor(n))})};$('flexEditCat').onclick=()=>openCategoryEditor(c.id);$('flexManageTpl').onclick=openTemplates}
+function enhanceCategoryForm(){const type=$('cType'),form=$('categoryForm');if(!type||!form)return;let extra=$('flexCategoryFields');if(!extra){extra=document.createElement('div');extra.id='flexCategoryFields';extra.className='flexCategoryFields hidden';extra.innerHTML=`<div class="field"><label>Option label</label><input id="flexCatLabel" placeholder="Size, Weight, Volume, Pack..."></div><div class="field" style="margin-top:10px"><label>Options</label><textarea id="flexCatValues" placeholder="S, M, L, XL or 100g, 500g, 1kg"></textarea><div class="muted" style="font-size:11px">Comma or line separated. Fully customizable.</div></div><button type="button" id="flexOpenTpl" class="btn blue" style="margin-top:10px">Manage templates</button>`;type.closest('.field').after(extra);$('flexOpenTpl').onclick=openTemplates}const cur=type.value;type.innerHTML='<option value="normal">Normal product — no options</option>'+tpls.map(t=>`<option value="tpl:${t.id}">${esc(t.name)} — ${esc(t.option_label)}</option>`).join('')+'<option value="custom">Custom options</option>';if([...type.options].some(o=>o.value===cur))type.value=cur;type.onchange=()=>{if(type.value==='normal'){extra.classList.add('hidden');return}extra.classList.remove('hidden');const t=tpls.find(x=>`tpl:${x.id}`===type.value);if(t){$('flexCatLabel').value=t.option_label;$('flexCatValues').value=(t.option_values||[]).join('\n')}};form.onsubmit=saveCategory}
+async function saveCategory(e){e.preventDefault();const id=$('flexCategoryId')?.value||'',name=$('cName').value.trim(),file=$('cImage').files?.[0],type=$('cType').value,editing=!!id;if(!name)return m($('categoryMessage'),'error','Category name is required.');if(!editing&&!file)return m($('categoryMessage'),'error','Category image is required.');if(file&&file.size>5*1024*1024)return m($('categoryMessage'),'error','Image must be 5 MB or smaller.');let listing_type='normal',option_label=null,option_values=[];if(type!=='normal'){listing_type='custom';option_label=$('flexCatLabel').value.trim()||'Option';option_values=vals($('flexCatValues').value);if(!option_values.length)return m($('categoryMessage'),'error','Add at least one option.')}await refresh();const old=cats.find(x=>x.id===id);let image_path=old?.image_path||null;if(file){const ext=(file.name.split('.').pop()||'png').replace(/[^a-z0-9]/gi,'').toLowerCase(),p=`categories/${slug(name)}-${crypto.randomUUID()}.${ext}`,{error}=await s.storage.from('product-images').upload(p,file,{contentType:file.type,cacheControl:'3600'});if(error)return m($('categoryMessage'),'error',error.message);image_path=p}const payload={name,slug:editing?(old?.slug||slug(name)):slug(name),image_path,listing_type,option_label,option_values,is_published:true,sort_order:editing?(old?.sort_order||0):(Math.max(0,...cats.map(x=>Number(x.sort_order||0)))+10)},q=editing?s.from('categories').update(payload).eq('id',id).select().single():s.from('categories').insert(payload).select().single(),{data,error}=await q;if(error)return m($('categoryMessage'),'error',error.message);$('categoryModal').classList.remove('open');await refresh();location.reload()}
+async function openCategoryEditor(id){await refresh();const c=cats.find(x=>x.id===id);if(!c)return;let h=$('flexCategoryId');if(!h){h=document.createElement('input');h.type='hidden';h.id='flexCategoryId';$('categoryForm').prepend(h)}h.value=c.id;$('cName').value=c.name;$('cImage').required=false;$('categoryPreviewName').textContent=c.name;if(c.image_path){$('categoryPreview').src=pub(c.image_path);$('categoryPreview').classList.remove('hidden');$('categoryPreviewPlaceholder').classList.add('hidden')}enhanceCategoryForm();$('cType').value=c.listing_type==='normal'?'normal':'custom';$('flexCategoryFields').classList.toggle('hidden',c.listing_type==='normal');$('flexCatLabel').value=c.option_label||'';$('flexCatValues').value=(c.option_values||[]).join('\n');$('categoryModal').classList.add('open')}
+function addCategoryTools(){const ctl=$('pCategory')?.closest('.categoryControl');if(!ctl||$('flexEditCategory'))return;const edit=document.createElement('button');edit.id='flexEditCategory';edit.type='button';edit.className='btn secondary';edit.textContent='Edit category';const del=document.createElement('button');del.id='deleteSelectedCategory';del.type='button';del.className='btn danger';del.textContent='Delete category';const t=document.createElement('button');t.id='flexTemplates';t.type='button';t.className='btn blue';t.textContent='Templates';ctl.append(edit,del,t);edit.onclick=()=>{const id=$('pCategory').value;if(id)openCategoryEditor(id)};t.onclick=openTemplates;del.onclick=deleteCategory}
+async function deleteCategory(){const id=$('pCategory').value;if(!id)return;await refresh();const c=cats.find(x=>x.id===id),{count,error}=await s.from('products').select('id',{count:'exact',head:true}).eq('category_id',id);if(error)return alert(error.message);if((count||0)>0)return alert(`${c.name} still contains ${count} product${count===1?'':'s'}. Move or delete them first.`);if(!confirm(`Delete empty category “${c.name}”? Empty categories are NEVER deleted automatically; this happens only because you clicked Delete.`))return;const r=await s.from('categories').delete().eq('id',id);if(r.error)return alert(r.error.message.includes('category_has_products')?'This category still contains products.':r.error.message);if(c.image_path&&!/^https?:\/\//i.test(c.image_path))await s.storage.from('product-images').remove([c.image_path]);location.reload()}
+async function quickDelete(id){const {data:p,error}=await s.from('products').select('id,name,product_images(storage_path)').eq('id',id).single();if(error)return alert(error.message);if(!confirm(`Delete product “${p.name}” permanently?`))return;const paths=(p.product_images||[]).map(x=>x.storage_path).filter(x=>x&&!/^https?:\/\//i.test(x));if(paths.length)await s.storage.from('product-images').remove(paths);const d=await s.from('products').delete().eq('id',id);if(d.error)return alert(d.error.message);location.reload()}
+function decorateProducts(){document.querySelectorAll('[data-edit]').forEach(b=>{if(b.parentElement.querySelector('[data-flex-delete]'))return;const d=document.createElement('button');d.type='button';d.className='btn danger';d.style.cssText='margin-top:9px;margin-left:6px;padding:7px 10px;font-size:11px';d.textContent='Delete';d.dataset.flexDelete=b.dataset.edit;d.onclick=()=>quickDelete(d.dataset.flexDelete);b.after(d)})}
+function init(){enhanceCategoryForm();addCategoryTools();refresh().then(()=>enhanceCategoryForm());$('pCategory')?.addEventListener('change',()=>setTimeout(syncVariantUI,50));$('addCategory')?.addEventListener('click',()=>setTimeout(()=>{let h=$('flexCategoryId');if(!h){h=document.createElement('input');h.type='hidden';h.id='flexCategoryId';$('categoryForm').prepend(h)}h.value='';$('cImage').required=true;enhanceCategoryForm();$('cType').value='normal';$('flexCategoryFields')?.classList.add('hidden')},50));document.addEventListener('click',e=>{if(e.target.closest('#newProduct,[data-edit]'))setTimeout(syncVariantUI,100)});new MutationObserver(()=>decorateProducts()).observe($('products'),{childList:true,subtree:true});decorateProducts()}
+const {data:{session}}=await s.auth.getSession();if(session?.user)init();s.auth.onAuthStateChange((ev,session)=>{if(session?.user&&!$('flexTemplates'))setTimeout(init,150)});
