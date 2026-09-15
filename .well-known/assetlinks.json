@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.itarlok.app",
+      "sha256_cert_fingerprints": [
+        "6C:8D:B6:B8:70:BA:8A:AE:78:44:1D:3B:79:49:5C:63:D4:E0:61:00:93:AC:CD:79:3C:BB:90:DA:ED:00:E6:2D"
+      ]
+    }
+  }
+]
