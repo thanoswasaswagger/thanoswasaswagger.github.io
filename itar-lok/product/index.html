@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,follow">
+  <meta name="theme-color" content="#ea580c">
+  <title>Open product in Itar Lok</title>
+  <style>
+    *{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:linear-gradient(180deg,#fff7ed,#fff 45%,#f7f7f5);color:#171717}.card{width:min(460px,100%);background:#fff;border:1px solid #ece9e4;border-radius:28px;padding:26px;box-shadow:0 24px 70px rgba(0,0,0,.09);text-align:center}.mark{width:68px;height:68px;border-radius:22px;margin:0 auto 16px;display:grid;place-items:center;background:linear-gradient(145deg,#f97316,#ef4444);color:white;font-size:22px;font-weight:900;box-shadow:0 14px 30px rgba(249,115,22,.25)}h1{margin:0;font-size:27px}p{color:#71717a;line-height:1.55}.btn{display:block;width:100%;text-decoration:none;border:0;border-radius:17px;padding:15px 18px;font-weight:900;cursor:pointer;background:linear-gradient(135deg,#f97316,#ea580c);color:#fff;font-size:15px;margin-top:18px}.muted{font-size:12px;margin-top:14px}.code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;word-break:break-all;background:#fafafa;border:1px solid #eee;border-radius:13px;padding:10px;color:#52525b}
+  </style>
+</head>
+<body>
+  <main class="card">
+    <div class="mark">IL</div>
+    <h1>Opening Itar Lok…</h1>
+    <p>This product link opens the exact product inside the Itar Lok Android app when the app is installed.</p>
+    <a id="openApp" class="btn" href="#">Open in Itar Lok</a>
+    <div id="linkText" class="code"></div>
+    <p class="muted">If the app does not open automatically, tap the button above.</p>
+  </main>
+  <script>
+    const params = new URLSearchParams(location.search);
+    const id = (params.get('id') || '').trim();
+    const scheme = id ? `itarlok://product?id=${encodeURIComponent(id)}` : 'itarlok://product';
+    document.getElementById('openApp').href = scheme;
+    document.getElementById('linkText').textContent = location.href;
+    if (/Android/i.test(navigator.userAgent) && id) {
+      setTimeout(() => { location.href = scheme; }, 250);
+    }
+  </script>
+</body>
+</html>
