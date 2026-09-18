@@ -1,4 +1,4 @@
-// Itar Lok media rules: one image is required for every new product; extra images are optional.
+// Devintra media rules: one image is required for every new product; extra images are optional.
 const productImages = document.getElementById('pImages');
 const productId = document.getElementById('productId');
 
