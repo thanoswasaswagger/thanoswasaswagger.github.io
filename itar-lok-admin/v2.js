@@ -1,7 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.4';
-const URL='https://dmmjlsrdohdzwcyfnlgt.supabase.co';
+const SUPABASE_URL='https://dmmjlsrdohdzwcyfnlgt.supabase.co';
 const KEY='sb_publishable_Nb1BJiz1m9W-qLtiOrJpsw_s6PsrBXi';
-const supabase=createClient(URL,KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storageKey:'itar-lok-admin-auth'}});
+const supabase=createClient(SUPABASE_URL,KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storageKey:'itar-lok-admin-auth'}});
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
 const money=p=>`₹${((p||0)/100).toLocaleString('en-IN',{maximumFractionDigits:2})}`;
